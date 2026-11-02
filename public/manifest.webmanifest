@@ -1,0 +1,9 @@
+{
+  "name": "Wedding Camera",
+  "short_name": "Camera",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#16110d",
+  "theme_color": "#16110d",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

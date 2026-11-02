@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wedding Camera</title>
+<meta name="theme-color" content="#f6efe4">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="/">Wedding<span>Camera</span></a></nav>
+<main class="wrap">
+  <section class="hero">
+    <h1>A disposable camera<br>for every guest</h1>
+    <p>Guests scan a QR code, shoot a limited roll from their phone, and nobody sees a thing until the photos develop. No app to install.</p>
+  </section>
+
+  <section class="steps">
+    <div class="step"><span class="n">1</span><b>Create your event</b><span class="muted">Pick how many shots each guest gets and when the photos reveal.</span></div>
+    <div class="step"><span class="n">2</span><b>Share the QR code</b><span class="muted">Print it on table cards. Guests open the camera in their browser.</span></div>
+    <div class="step"><span class="n">3</span><b>Wait for the reveal</b><span class="muted">Photos develop at reveal time. Everyone gets the full gallery.</span></div>
+  </section>
+
+  <section class="card narrow" style="margin:0 auto" id="create">
+    <h2>Create an event</h2>
+    <form id="form">
+      <label for="name">Event name</label>
+      <input id="name" name="name" placeholder="Emma &amp; James" required maxlength="80">
+      <label for="subtitle">Subtitle <span class="muted">(optional)</span></label>
+      <input id="subtitle" name="subtitle" placeholder="The wedding · Lake Como" maxlength="120">
+      <label for="date">Event date</label>
+      <input id="date" name="date" type="date" required>
+      <label for="shots">Shots per guest</label>
+      <select id="shots" name="shotsPerGuest">
+        <option>10</option><option>15</option><option selected>24</option><option>36</option><option>50</option>
+      </select>
+      <div class="hint">Like a real disposable: once the roll is used up, it's done.</div>
+      <label>When do photos reveal?</label>
+      <div class="seg">
+        <input type="radio" name="revealMode" id="rm1" value="nextMorning" checked><label for="rm1">Next morning</label>
+        <input type="radio" name="revealMode" id="rm2" value="custom"><label for="rm2">Custom time</label>
+        <input type="radio" name="revealMode" id="rm3" value="manual"><label for="rm3">When I say</label>
+        <input type="radio" name="revealMode" id="rm4" value="instant"><label for="rm4">Instantly</label>
+      </div>
+      <div id="customWrap" class="hidden">
+        <label for="revealAt">Reveal at</label>
+        <input id="revealAt" name="revealAt" type="datetime-local">
+      </div>
+      <br>
+      <button class="btn block" type="submit">Create event</button>
+    </form>
+  </section>
+
+  <section class="card narrow hidden" style="margin:20px auto 0" id="mine">
+    <h3>Your events</h3>
+    <ul class="list" id="mineList"></ul>
+  </section>
+</main>
+<script src="/common.js"></script>
+<script>
+const f = $('#form');
+f.date.valueAsDate = new Date();
+f.addEventListener('change', () => $('#customWrap').classList.toggle('hidden', f.revealMode.value !== 'custom'));
+f.addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(f));
+  if (body.revealMode === 'custom') {
+    if (!body.revealAt) return toast('Pick a reveal time');
+    body.revealAt = new Date(body.revealAt).toISOString();
+  }
+  if (body.revealMode === 'nextMorning') {
+    const d = new Date(body.date + 'T09:00'); d.setDate(d.getDate() + 1);
+    body.revealMode = 'custom'; body.revealAt = d.toISOString(); // use the host's timezone
+  }
+  const btn = f.querySelector('button'); btn.disabled = true;
+  try {
+    const r = await api('/api/events', { method: 'POST', body });
+    const mine = store.get('myEvents', []);
+    mine.unshift({ code: r.code, key: r.adminKey, name: body.name });
+    store.set('myEvents', mine);
+    location.href = `/h/${r.code}?key=${r.adminKey}`;
+  } catch (err) { toast(err.message); btn.disabled = false; }
+});
+const mine = store.get('myEvents', []);
+if (mine.length) {
+  $('#mine').classList.remove('hidden');
+  $('#mineList').innerHTML = mine.map(m => `<li><span>${esc(m.name)}</span><a href="/h/${m.code}?key=${encodeURIComponent(m.key)}">Manage →</a></li>`).join('');
+}
+</script>
+</body>
+</html>

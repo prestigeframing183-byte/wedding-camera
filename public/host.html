@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Host · Wedding Camera</title>
+<meta name="theme-color" content="#f6efe4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .cols { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 820px) { .cols { grid-template-columns: 320px 1fr; align-items: start; } }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; background: #efe3d3; }
+  .badge.live { background: #dff2e1; color: #24663a; }
+  .badge.off { background: #f6dede; color: #9b2c2c; }
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="/">Wedding<span>Camera</span></a><span class="badge" id="status"></span></nav>
+<main class="wrap">
+  <h1 id="title"></h1>
+  <p class="muted" id="sub"></p>
+
+  <div class="cols">
+    <aside>
+      <section class="card center">
+        <h3>Guest QR code</h3>
+        <img class="qr" id="qr" alt="QR code for guests">
+        <div class="linkbox" style="margin-top:14px"><input id="link" readonly><button class="btn small" id="copy">Copy</button></div>
+        <div class="row" style="justify-content:center;margin-top:12px">
+          <button class="btn small ghost" id="print">Print table card</button>
+          <button class="btn small ghost" id="share">Share</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Settings</h3>
+        <form id="settings">
+          <label for="sName">Event name</label><input id="sName" name="name" maxlength="80">
+          <label for="sShots">Shots per guest</label><input id="sShots" name="shotsPerGuest" type="number" min="1" max="100">
+          <label for="sReveal">Reveal time</label><input id="sReveal" type="datetime-local">
+          <div class="hint" id="revealHint"></div>
+          <br><button class="btn small block" type="submit">Save changes</button>
+        </form>
+        <div class="row" style="margin-top:12px">
+          <button class="btn small dark" id="revealNow">Reveal now</button>
+          <button class="btn small ghost" id="hide">Hide photos</button>
+          <button class="btn small ghost" id="closeCam"></button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Guests</h3>
+        <ul class="list" id="guests"></ul>
+      </section>
+    </aside>
+
+    <section>
+      <div class="stats" style="margin-bottom:20px">
+        <div class="stat"><b id="stPhotos">0</b><small>photos</small></div>
+        <div class="stat"><b id="stGuests">0</b><small>guests</small></div>
+        <div class="stat"><b id="stReveal">–</b><small id="stRevealL">until reveal</small></div>
+      </div>
+      <div class="row" style="margin-bottom:12px">
+        <h2 style="margin:0">All photos</h2><span class="spacer"></span>
+        <a class="btn small dark" id="zip">Download all (.zip)</a>
+      </div>
+      <p class="hint">As the host you can see photos before they're revealed to guests.</p>
+      <div class="grid" id="grid"></div>
+    </section>
+  </div>
+</main>
+
+<div class="print-card">
+  <p style="letter-spacing:.2em;text-transform:uppercase">Be our photographer</p>
+  <h1 class="pc-name"></h1>
+  <img class="pc-qr" alt="">
+  <p style="font-size:20px">Scan to open your disposable camera.<br><span class="pc-shots"></span> shots each · photos revealed <span class="pc-when"></span></p>
+</div>
+
+<script src="/common.js"></script>
+<script src="/gallery.js"></script>
+<script>
+const CODE = eventCode();
+const params = new URLSearchParams(location.search);
+const KEY = params.get('key') || (store.get('myEvents', []).find(e => e.code === CODE) || {}).key;
+const guestUrl = `${location.origin}/e/${CODE}`;
+const H = { 'x-admin-key': KEY };
+let ev;
+const gallery = Gallery($('#grid'), { code: CODE, adminKey: KEY, onDelete: async id => {
+  await api(`/api/events/${CODE}/photos/${id}`, { method: 'DELETE', headers: H }); toast('Photo deleted'); refresh();
+}});
+
+const toLocalInput = ts => { const d = new Date(ts - new Date(ts).getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 16); };
+
+async function refresh() {
+  try { ev = await api(`/api/events/${CODE}`, { headers: H }); }
+  catch { document.querySelector('main').innerHTML = '<h1>Event not found</h1>'; return; }
+  if (!ev.isHost) { document.querySelector('main').innerHTML = '<h1>Host link required</h1><p class="muted">Open the private host link you received when creating the event.</p>'; return; }
+  const mine = store.get('myEvents', []);
+  if (!mine.some(m => m.code === CODE)) { mine.unshift({ code: CODE, key: KEY, name: ev.name }); store.set('myEvents', mine); }
+
+  document.title = `${ev.name} · Host`;
+  $('#title').textContent = ev.name;
+  $('#sub').textContent = [ev.subtitle, ev.date && new Date(ev.date + 'T12:00').toLocaleDateString(undefined, { dateStyle: 'long' })].filter(Boolean).join(' · ');
+  $('#status').textContent = ev.closed ? 'Camera closed' : ev.revealed ? 'Revealed' : 'Camera live';
+  $('#status').className = 'badge ' + (ev.closed ? 'off' : 'live');
+  $('#stPhotos').textContent = ev.photoCount; $('#stGuests').textContent = ev.guestCount;
+  $('#closeCam').textContent = ev.closed ? 'Reopen camera' : 'Close camera';
+
+  const f = $('#settings');
+  if (document.activeElement.form !== f) {
+    f.name.value = ev.name; f.shotsPerGuest.value = ev.shotsPerGuest;
+    $('#sReveal').value = ev.revealAt ? toLocalInput(ev.revealAt) : '';
+  }
+  $('#revealHint').textContent = ev.revealed ? 'Photos are visible to guests.' : ev.revealAt ? `Guests see photos ${fmtDate(ev.revealAt)}.` : 'No reveal time set — reveal manually.';
+  if (ev.revealed) { $('#stReveal').textContent = '✓'; $('#stRevealL').textContent = 'revealed'; }
+  else if (!ev.revealAt) { $('#stReveal').textContent = '—'; $('#stRevealL').textContent = 'manual reveal'; }
+  else {
+    const h = Math.max(0, (ev.revealAt - ev.now) / 36e5);
+    $('#stReveal').textContent = h >= 48 ? Math.round(h / 24) + 'd' : h >= 1 ? Math.round(h) + 'h' : Math.ceil(h * 60) + 'm';
+    $('#stRevealL').textContent = 'until reveal';
+  }
+  $('#guests').innerHTML = ev.guests.length ? ev.guests.sort((a, b) => b.shots - a.shots)
+    .map(g => `<li><span>${esc(g.name)}</span><span class="muted">${g.shots}/${ev.shotsPerGuest}</span></li>`).join('')
+    : '<li class="muted">No guests yet — share the QR code!</li>';
+
+  $('.pc-name').textContent = ev.name; $('.pc-shots').textContent = ev.shotsPerGuest;
+  $('.pc-when').textContent = ev.revealAt ? new Date(ev.revealAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'after the party';
+  gallery.render(await api(`/api/events/${CODE}/photos`, { headers: H }));
+}
+
+async function patch(body, msg) {
+  try { await api(`/api/events/${CODE}`, { method: 'PATCH', headers: H, body }); toast(msg); refresh(); }
+  catch (e) { toast(e.message); }
+}
+
+$('#qr').src = $('.pc-qr').src = `/api/events/${CODE}/qr.png`;
+$('#link').value = guestUrl;
+$('#zip').href = `/api/events/${CODE}/download.zip?key=${encodeURIComponent(KEY || '')}`;
+$('#copy').onclick = async () => { try { await navigator.clipboard.writeText(guestUrl); toast('Link copied'); } catch { $('#link').select(); } };
+$('#share').onclick = () => navigator.share ? navigator.share({ title: ev.name, text: `Grab your disposable camera for ${ev.name}!`, url: guestUrl }).catch(() => {}) : $('#copy').click();
+$('#print').onclick = () => window.print();
+$('#settings').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target, body = { name: f.name.value, shotsPerGuest: f.shotsPerGuest.value };
+  const r = $('#sReveal').value;
+  if (r) { body.revealMode = 'custom'; body.revealAt = new Date(r).toISOString(); }
+  patch(body, 'Saved');
+});
+$('#revealNow').onclick = () => confirm('Reveal all photos to guests now?') && patch({ revealMode: 'instant' }, 'Photos revealed!');
+$('#hide').onclick = () => patch({ revealMode: 'manual' }, 'Photos hidden from guests');
+$('#closeCam').onclick = () => patch({ closed: !ev.closed }, ev.closed ? 'Camera reopened' : 'Camera closed');
+
+refresh();
+setInterval(() => { if (!document.hidden && !$('.lightbox:not(.hidden)')) refresh(); }, 20000);
+</script>
+</body>
+</html>

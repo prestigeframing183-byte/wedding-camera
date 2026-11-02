@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Camera · Wedding Camera</title>
+<meta name="theme-color" content="#16110d">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/camera.css">
+</head>
+<body class="cam">
+
+<section id="loading" class="screen center"><div class="film"></div></section>
+
+<section id="join" class="screen hidden">
+  <div class="join-card">
+    <p class="eyebrow">You're invited to shoot</p>
+    <h1 class="ev-name"></h1>
+    <p class="ev-sub muted"></p>
+    <div class="roll-info"><b class="ev-shots"></b> shots on your roll<br><span class="ev-reveal muted"></span></div>
+    <form id="joinForm">
+      <input name="name" placeholder="Your name" maxlength="40" required autocomplete="given-name">
+      <button class="btn block" type="submit">Get my camera</button>
+    </form>
+    <p class="fine">Your photos stay hidden until the reveal — just like film.</p>
+  </div>
+</section>
+
+<section id="camera" class="screen hidden">
+  <header class="cam-top">
+    <a class="icon" id="galleryLink" title="Gallery">▦</a>
+    <div class="cam-title"><span class="ev-name"></span></div>
+    <div class="counter"><b id="left">–</b><small>left</small></div>
+  </header>
+  <div class="viewfinder" id="vf">
+    <video id="video" playsinline autoplay muted></video>
+    <div class="vf-frame"></div>
+    <div class="shutter-flash" id="sflash"></div>
+    <div class="vf-msg hidden" id="vfMsg"></div>
+  </div>
+  <div class="filters" id="filters"></div>
+  <footer class="cam-bottom">
+    <button class="icon" id="flashBtn" title="Flash">⚡<small>off</small></button>
+    <button class="shutter" id="shutter" aria-label="Take photo"><span></span></button>
+    <button class="icon" id="flipBtn" title="Switch camera">⟲</button>
+  </footer>
+  <div class="pending hidden" id="pending"></div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" class="hidden">
+</section>
+
+<section id="done" class="screen hidden">
+  <div class="join-card">
+    <div class="film"></div>
+    <h1>That's a wrap!</h1>
+    <p id="doneMsg" class="muted">You've used every shot on your roll.</p>
+    <div class="countdown" id="doneCountdown"></div>
+    <a class="btn block" id="doneGallery">Go to gallery</a>
+  </div>
+</section>
+
+<div class="screen-flash" id="screenFlash"></div>
+<script src="/common.js"></script>
+<script src="/develop.js"></script>
+<script src="/camera.js"></script>
+</body>
+</html>

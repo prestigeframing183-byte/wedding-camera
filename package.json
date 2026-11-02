@@ -1,0 +1,30 @@
+{
+  "name": "wedding-camera",
+  "version": "1.0.0",
+  "description": "Disposable wedding camera: guests scan a QR code, shoot a limited roll, photos develop at reveal time.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prestigeframing183-byte/wedding-camera.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/prestigeframing183-byte/wedding-camera/issues"
+  },
+  "homepage": "https://github.com/prestigeframing183-byte/wedding-camera#readme",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "express": "^4.22.3",
+    "multer": "^1.4.5-lts.1",
+    "qrcode": "^1.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gallery · Wedding Camera</title>
+<meta name="theme-color" content="#f6efe4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="/">Wedding<span>Camera</span></a><a class="btn small ghost" id="camLink">Camera</a></nav>
+<main class="wrap">
+  <header class="center">
+    <h1 id="title"></h1>
+    <p class="muted" id="sub"></p>
+  </header>
+
+  <section id="dev" class="developing hidden">
+    <div class="film"></div>
+    <h2>Developing…</h2>
+    <p class="muted" id="devMsg"></p>
+    <div class="countdown" id="cd"></div>
+  </section>
+
+  <section id="gal" class="hidden">
+    <div class="row" style="margin:16px 0">
+      <div class="tabs" id="sort">
+        <button data-s="time" class="on">Timeline</button>
+        <button data-s="popular">Favourites</button>
+        <button data-s="mine">My shots</button>
+      </div>
+      <span class="spacer"></span>
+      <a class="btn small dark" id="zip">Download all</a>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+</main>
+<script src="/common.js"></script>
+<script src="/gallery.js"></script>
+<script>
+const CODE = eventCode();
+const guest = store.get('guest:' + CODE);
+const viewer = guest && guest.guestId;
+let sort = 'time';
+$('#camLink').href = `/e/${CODE}`;
+$('#zip').href = `/api/events/${CODE}/download.zip`;
+if (!viewer) $('#sort [data-s=mine]').remove();
+const gallery = Gallery($('#grid'), { code: CODE, viewer });
+
+async function load() {
+  let ev;
+  try { ev = await api(`/api/events/${CODE}`); }
+  catch { $('#title').textContent = 'Event not found'; return; }
+  document.title = `${ev.name} · Gallery`;
+  $('#title').textContent = ev.name;
+  $('#sub').textContent = [ev.subtitle, `${ev.photoCount} photos · ${ev.guestCount} guests`].filter(Boolean).join(' · ');
+  if (!ev.revealed) {
+    $('#dev').classList.remove('hidden');
+    $('#devMsg').textContent = `${ev.photoCount} photo${ev.photoCount === 1 ? '' : 's'} developing. ` +
+      (ev.revealAt ? `Ready ${fmtDate(ev.revealAt)}.` : 'The hosts will reveal them soon.');
+    if (ev.revealAt) countdown($('#cd'), ev.revealAt, ev.now, () => setTimeout(load, 1500));
+    else setTimeout(load, 30000);
+    return;
+  }
+  $('#dev').classList.add('hidden'); $('#gal').classList.remove('hidden');
+  await loadPhotos();
+}
+async function loadPhotos() {
+  const params = new URLSearchParams();
+  if (viewer) params.set('viewer', viewer);
+  if (sort === 'popular') params.set('sort', 'popular');
+  if (sort === 'mine') params.set('guest', viewer);
+  gallery.render(await api(`/api/events/${CODE}/photos?${params}`));
+}
+$('#sort').addEventListener('click', e => {
+  const s = e.target.dataset.s; if (!s) return;
+  sort = s; $$('#sort button').forEach(b => b.classList.toggle('on', b === e.target)); loadPhotos();
+});
+load();
+</script>
+</body>
+</html>
